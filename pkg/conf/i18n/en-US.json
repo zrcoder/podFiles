@@ -1,0 +1,31 @@
+{
+    "name": "Pod Files",
+    "lang": "Language",
+    "theme": "Theme",
+    "settings": "Settings",
+    "podFile": {
+        "keywords": "Keywords",
+        "search: ": "Search",
+        "reset": "Reset",
+        "fileType": "Type",
+        "fileName": "Name",
+        "fileSize": "Size",
+        "download": "Download"
+    },
+    "k8s": {
+        "name": "Name",
+        "namespaces": "Namespaces",
+        "pods": "Pods",
+        "containers": "Containers",
+        "namespace": "Namespace",
+        "pod": "Pod",
+        "container": "Container"
+    },
+    "user": {
+        "login": "Login",
+        "logout": "Logout",
+        "name": "Name",
+        "password": "Password",
+        "signUp": "Sign Up"
+    }
+}
