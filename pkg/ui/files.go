@@ -9,9 +9,10 @@ import (
 func FileList(app *amisgo.App) comp.Page {
 	return page(
 		app,
-		app.Crud().Name("files").Api(api.Files).
+		false,
+		crud(app).Name("files").Api(api.Files).
 			Columns(
-				app.Column().Name("display").Label("${i18n.podFile.fileName}"),
+				app.Column().Name("name").Label("${i18n.podFile.fileName}").Searchable(true),
 				app.Column().Name("size").Label("${i18n.podFile.fileSize}"),
 				app.Column().Name("time").Label("${i18n.podFile.modifyTime}"),
 				app.Column().Type("operation").Buttons(
@@ -21,9 +22,15 @@ func FileList(app *amisgo.App) comp.Page {
 						ActionType("ajax").
 						ConfirmText("${i18n.podFile.confirmDownload}"+"${event.data.item.name}").
 						Api("post:"+api.Download+"?file=${event.data.item.name}"),
+					app.Button().
+						VisibleOn("${isDir}").
+						Icon("fa fa-folder-open").
+						Label("${i18n.podFile.open}").
+						ActionType("ajax").
+						Api(api.Files).
+						Reload("files"),
 				),
 			).
-			Filter(filter(app)).
 			OnEvent(
 				app.Event().RowClick(
 					app.EventActions(

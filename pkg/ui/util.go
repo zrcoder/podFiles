@@ -5,23 +5,31 @@ import (
 	"github.com/zrcoder/amisgo/comp"
 )
 
-func page(app *amisgo.App, body any) comp.Page {
-	return app.Page().
-		Title(app.Button().Icon("fa fa-home").Label("${i18n.name}").ActionType("link").Link("/").ClassName("bg-none")).
-		Toolbar(
-			app.InputGroup().Body(
-				app.ThemeButtonGroupSelect(),
+func page(app *amisgo.App, isHome bool, body ...any) comp.Page {
+	toolbarBodyButtons := []any{
+		app.LocaleButtonGroupSelect(),
+	}
+	if !isHome {
+		toolbarBodyButtons = append(
+			[]any{
+				app.Button().Icon("fa fa-home").Label("${i18n.home}").ActionType("link").Link("/").ClassName("bg-none border-none"),
 				app.Wrapper(),
-				app.LocaleButtonGroupSelect(),
-			),
-		).
+			},
+			toolbarBodyButtons...,
+		)
+	}
+	return app.Page().
+		Title("${i18n.name}").
+		Toolbar(app.InputGroup().Body(toolbarBodyButtons...).ClassName("my-2")).
 		Body(body)
 }
 
-func filter(app *amisgo.App) comp.Form {
-	return app.Form().Title("").WrapWithPanel(false).Body(
-		app.InputText().Name("keyword"),                        //.Label("${i18n.podFile.keywords}"),
-		app.SubmitAction().Icon("fa fa-search").Primary(true),  //.Label("${i18n.podFile.search}")
-		app.Action().Icon("fa fa-refresh").ActionType("reset"), //.Label("${i18n.podFile.reset}")
-	).Actions()
+func crud(app *amisgo.App) comp.Crud {
+	return app.Crud().
+		SyncLocation(false).
+		LoadDataOnce(true).
+		HeaderToolbar(
+			"switch-per-page",
+			"pagination",
+		)
 }

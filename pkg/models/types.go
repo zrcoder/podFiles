@@ -17,11 +17,10 @@ type Container struct {
 }
 
 type FileInfo struct {
-	Name    string `json:"name"`
-	IsDir   bool   `json:"isDir"`
-	Size    string `json:"size"`
-	Time    string `json:"time"`
-	Display string `json:"display"`
+	Name  string `json:"name"`
+	IsDir bool   `json:"isDir"`
+	Size  string `json:"size"`
+	Time  string `json:"time"`
 }
 
 type State struct {

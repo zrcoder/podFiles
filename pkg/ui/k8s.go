@@ -12,15 +12,14 @@ const (
 )
 
 func Index(app *amisgo.App) comp.Page {
-	return page(app, app.Group().Body(nsList(app), podList(app), containerList(app)))
+	return page(app, true, app.Group().Body(nsList(app), podList(app), containerList(app)))
 }
 
 func nsList(app *amisgo.App) comp.Crud {
-	return app.Crud().Title("${i18n.k8s.namespace}").Name("ns").Api(api.Namespaces).SyncLocation(false).
+	return crud(app).Name("ns").Api(api.Namespaces).
 		Columns(
-			app.Column().Name("namespace"), //.Label("${i18n.k8s.name}"),
+			app.Column().Name("namespace").Searchable(true).Label("${i18n.k8s.namespace}"),
 		).
-		Filter(filter(app)).
 		OnEvent(
 			app.Event().RowClick(
 				app.EventActions(
@@ -33,11 +32,10 @@ func nsList(app *amisgo.App) comp.Crud {
 }
 
 func podList(app *amisgo.App) comp.Crud {
-	return app.Crud().Title("${i18n.k8s.pod}").Name("pods").Api(api.Pods).
+	return crud(app).Name("pods").Api(api.Pods).
 		Columns(
-			app.Column().Name("pod"), //.Label("${i18n.k8s.name}"),
+			app.Column().Name("pod").Searchable(true).Label("${i18n.k8s.pod}"),
 		).
-		Filter(filter(app)).
 		OnEvent(
 			app.Event().RowClick(
 				app.EventActions(
@@ -49,11 +47,10 @@ func podList(app *amisgo.App) comp.Crud {
 }
 
 func containerList(app *amisgo.App) comp.Crud {
-	return app.Crud().Name("containers").Api(api.Containers).
+	return crud(app).Name("containers").Api(api.Containers).
 		Columns(
-			app.Column().Name("container").Label("${i18n.k8s.container}"),
+			app.Column().Name("container").Searchable(true).Label("${i18n.k8s.container}"),
 		).
-		Filter(filter(app)).
 		OnEvent(
 			app.Event().RowClick(
 				app.EventActions(

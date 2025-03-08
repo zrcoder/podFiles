@@ -7,13 +7,13 @@ import (
 	"log/slog"
 	"net/http"
 	"path/filepath"
-	"sync"
-
-	"github.com/zrcoder/podFiles/pkg/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/zrcoder/amisgo/schema"
 	"github.com/zrcoder/podFiles/internal/k8s"
+	"github.com/zrcoder/podFiles/pkg/auth"
+	"github.com/zrcoder/podFiles/pkg/models"
+	"github.com/zrcoder/podFiles/pkg/state"
 )
 
 const (
@@ -48,11 +48,6 @@ const (
 
 var k8sClient *k8s.Client
 
-var (
-	statemux sync.RWMutex
-	state    = &models.State{}
-)
-
 func New() http.Handler {
 	gin.SetMode(gin.ReleaseMode)
 
@@ -63,6 +58,7 @@ func New() http.Handler {
 	}
 
 	handler := gin.Default()
+	handler.Use(auth.Auth)
 	api := handler.Group(Prefix)
 	{
 		api.GET(namespacesPath, listNamespaces)
@@ -95,21 +91,21 @@ func setNamespace(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "namespace is required"})
 		return
 	}
-	statemux.Lock()
-	state.SetNamespace(namespace)
-	statemux.Unlock()
+	session := c.GetString(state.SessionKey)
+	state.Get(session).SetNamespace(namespace)
 	c.JSON(http.StatusOK, gin.H{"message": ""})
 }
 
 func listPods(c *gin.Context) {
-	statemux.RLock()
-	defer statemux.RUnlock()
-	if state.Namespace == "" {
+	session := c.GetString(state.SessionKey)
+	slog.Debug("get session", "session", session)
+	namespace := state.Get(session).Namespace
+	if namespace == "" {
 		slog.Info("namespace is required")
 		c.JSON(http.StatusOK, []models.Pod{})
 		return
 	}
-	pods, err := k8sClient.ListPods(c.Request.Context(), state.Namespace)
+	pods, err := k8sClient.ListPods(c.Request.Context(), namespace)
 	if err != nil {
 		slog.Error("list pods", "err", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -125,21 +121,25 @@ func setPod(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "pod is required"})
 		return
 	}
-	statemux.Lock()
-	state.SetPod(pod)
-	statemux.Unlock()
+	session := c.GetString(state.SessionKey)
+	state.Get(session).SetPod(pod)
 	c.JSON(http.StatusOK, gin.H{"message": ""})
 }
 
 func listContainers(c *gin.Context) {
-	statemux.RLock()
-	defer statemux.RUnlock()
-	if state.Namespace == "" || state.Pod == "" {
-		slog.Info("namespace or pod is required")
+	session := c.GetString(state.SessionKey)
+	st := state.Get(session)
+	if st.Namespace == "" {
+		slog.Info("namespace is required")
 		c.JSON(http.StatusOK, []models.Container{})
 		return
 	}
-	containers, err := k8sClient.ListContainers(c.Request.Context(), state.Namespace, state.Pod)
+	if st.Pod == "" {
+		slog.Info("pod is required")
+		c.JSON(http.StatusOK, []models.Container{})
+		return
+	}
+	containers, err := k8sClient.ListContainers(c.Request.Context(), st.Namespace, st.Pod)
 	if err != nil {
 		slog.Error("list containers", "err", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -155,21 +155,20 @@ func setContainer(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "container is required"})
 		return
 	}
-	statemux.Lock()
-	state.SetContainer(container)
-	statemux.Unlock()
+	session := c.GetString(state.SessionKey)
+	state.Get(session).SetContainer(container)
 	c.JSON(http.StatusOK, gin.H{"message": ""})
 }
 
 func listFiles(c *gin.Context) {
-	statemux.RLock()
-	defer statemux.RUnlock()
-	if state.Namespace == "" || state.Pod == "" || state.Container == "" {
+	session := c.GetString(state.SessionKey)
+	st := state.Get(session)
+	if st.Namespace == "" || st.Pod == "" || st.Container == "" {
 		slog.Info("namespace, pod or container is required")
 		c.JSON(http.StatusOK, []models.FileInfo{})
 		return
 	}
-	files, err := k8sClient.ListFiles(c.Request.Context(), state.Namespace, state.Pod, state.Container, state.FSPath())
+	files, err := k8sClient.ListFiles(c.Request.Context(), st.Namespace, st.Pod, st.Container, st.FSPath())
 	if err != nil {
 		slog.Error("list files", "err", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -214,9 +213,9 @@ func upload(c *gin.Context) {
 			return
 		}
 	}()
-	statemux.RLock()
-	defer statemux.RUnlock()
-	err = k8sClient.UploadFile(c.Request.Context(), state.Namespace, state.Pod, state.Container, state.FSPath(), pr)
+	session := c.GetString(state.SessionKey)
+	st := state.Get(session)
+	err = k8sClient.UploadFile(c.Request.Context(), st.Namespace, st.Pod, st.Container, st.FSPath(), pr)
 	if err != nil {
 		slog.Error("upload file", "err", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -227,14 +226,14 @@ func upload(c *gin.Context) {
 }
 
 func download(c *gin.Context) {
-	statemux.RLock()
-	defer statemux.RUnlock()
+	session := c.GetString(state.SessionKey)
+	st := state.Get(session)
 	file := c.Query("file")
-	path := state.FSPath() + "/" + file
+	path := st.FSPath() + "/" + file
 	c.Writer.Header().Set("Content-Type", "application/octet-stream")
 	c.Writer.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filepath.Base(path)))
 
-	err := k8sClient.DownloadFile(c.Request.Context(), state.Namespace, state.Pod, state.Container, path, c.Writer)
+	err := k8sClient.DownloadFile(c.Request.Context(), st.Namespace, st.Pod, st.Container, path, c.Writer)
 	if err != nil {
 		slog.Error("download file", "err", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

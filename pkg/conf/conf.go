@@ -36,10 +36,7 @@ var (
 func Options() []conf.Option {
 	return []conf.Option{
 		conf.WithLocalSdk(http.FS(sdk.FS)),
-		conf.WithThemes(
-			conf.Theme{Value: conf.ThemeAng, Label: "○"},
-			conf.Theme{Value: conf.ThemeDark, Label: "☾"},
-		),
+		conf.WithTheme(conf.ThemeAng),
 		conf.WithLocales(
 			conf.Locale{Value: conf.LocaleZhCN, Label: "汉", Dict: zhCN},
 			conf.Locale{Value: conf.LocaleEnUS, Label: "En", Dict: enUS},
