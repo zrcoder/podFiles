@@ -88,9 +88,7 @@ func (c *Client) ListFiles(ctx context.Context, namespace, pod, container, dir s
 		Resource("pods").Name(pod).Namespace(namespace).SubResource("exec").
 		Param("container", container).
 		Param("command", "ls").
-		Param("command", "-l").
-		Param("command", "-h").
-		Param("command", "-F").
+		Param("command", "-lhF").
 		Param("command", dir).
 		Param("stdout", "true").
 		Param("stderr", "true")
@@ -132,18 +130,11 @@ func parseFileList(output string) []models.FileInfo {
 		}
 		name := fields[8]
 		isDir := strings.HasSuffix(name, "/")
-		display := ""
-		if isDir {
-			display = "📁" + name
-		} else {
-			display = "📄" + name
-		}
 		file := models.FileInfo{
-			Name:    name,
-			IsDir:   isDir,
-			Size:    fields[4],
-			Time:    fields[5] + "-" + fields[6] + " " + fields[7],
-			Display: display,
+			Name:  name,
+			IsDir: isDir,
+			Size:  fields[4],
+			Time:  fields[5] + "-" + fields[6] + " " + fields[7],
 		}
 		files = append(files, file)
 	}

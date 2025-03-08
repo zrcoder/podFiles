@@ -1,5 +1,6 @@
 {
     "name": "Pod Files",
+    "home": "Home",
     "lang": "Language",
     "theme": "Theme",
     "settings": "Settings",
@@ -10,7 +11,10 @@
         "fileType": "Type",
         "fileName": "Name",
         "fileSize": "Size",
-        "download": "Download"
+        "modifyTime": "Modify Time",
+        "open": "Open",
+        "download": "Download",
+        "folder": "Folder"
     },
     "k8s": {
         "name": "Name",

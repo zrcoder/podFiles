@@ -5,7 +5,9 @@ go 1.24.0
 require (
 	gitee.com/rdor/amis-sdk/v6 v6.11.0
 	github.com/gin-gonic/gin v1.10.0
-	github.com/zrcoder/amisgo v0.11.12
+	github.com/google/uuid v1.6.0
+	github.com/patrickmn/go-cache v2.1.0+incompatible
+	github.com/zrcoder/amisgo v0.11.13-0.20250308142501-548aa5fc15fb
 	k8s.io/apimachinery v0.32.2
 	k8s.io/client-go v0.32.2
 )
@@ -33,7 +35,6 @@ require (
 	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
