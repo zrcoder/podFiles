@@ -13,9 +13,7 @@ import (
 
 func main() {
 	fmt.Println("Starting...")
-	app := amisgo.New(
-		conf.Options()...,
-	)
+	app := amisgo.New(conf.Options()...)
 	app.Mount("/", ui.Index(app))
 	app.Mount(ui.FilesPage, ui.FileList(app), auth.K8s)
 	app.Handle(api.Prefix, api.New())

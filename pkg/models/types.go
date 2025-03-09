@@ -17,10 +17,10 @@ type Container struct {
 }
 
 type FileInfo struct {
-	Name  string `json:"name"`
-	IsDir bool   `json:"isDir"`
-	Size  string `json:"size"`
-	Time  string `json:"time"`
+	Name string `json:"name"`
+	Type string `json:"type"`
+	Size string `json:"size"`
+	Time string `json:"time"`
 }
 
 type State struct {
@@ -28,8 +28,6 @@ type State struct {
 	Pod       string   `json:"pod"`
 	Container string   `json:"container"`
 	Path      []string `json:"path"`
-	// ApiPath   string   `json:"apiPath"`
-	// FSPath    string   `json:"fsPath"`
 }
 
 func (s *State) SetNamespace(namespace string) {
@@ -49,6 +47,10 @@ func (s *State) SetContainer(container string) {
 
 func (s *State) SetPath(path []string) {
 	s.Path = path
+}
+
+func (s *State) AddPath(path string) {
+	s.Path = append(s.Path, path)
 }
 
 // func (s *State) Normalize() {

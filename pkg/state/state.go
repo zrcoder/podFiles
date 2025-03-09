@@ -18,12 +18,12 @@ const (
 var sessins = cache.New(sessionLife, 5*time.Minute)
 
 func Add(session string) {
-	slog.Debug("add session", "session", session)
+	slog.Debug("add session", slog.String("session", session))
 	sessins.Add(session, &models.State{}, sessionLife)
 }
 
 func Get(session string) *models.State {
-	slog.Debug("get session", "session", session)
+	slog.Debug("get session", slog.String("session", session))
 	s, ok := sessins.Get(session)
 	if !ok {
 		return nil

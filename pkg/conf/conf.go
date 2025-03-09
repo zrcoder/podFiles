@@ -14,11 +14,7 @@ import (
 
 func init() {
 	if os.Getenv("DEV") != "" {
-		log := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-			Level:     slog.LevelDebug,
-			AddSource: true,
-		}))
-		slog.SetDefault(log)
+		slog.SetLogLoggerLevel(slog.LevelDebug)
 		gin.SetMode(gin.DebugMode)
 	} else {
 		slog.SetLogLoggerLevel(slog.LevelInfo)

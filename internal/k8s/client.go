@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"os"
 	"strings"
 
 	"github.com/zrcoder/podFiles/pkg/models"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/remotecommand"
@@ -82,13 +83,14 @@ func (c *Client) ListContainers(ctx context.Context, namespace, pod string) ([]m
 
 func (c *Client) ListFiles(ctx context.Context, namespace, pod, container, dir string) ([]models.FileInfo, error) {
 	if dir == "" {
-		dir = "."
+		dir = "/"
 	}
+	slog.Debug("list files", "namespace", namespace, "pod", pod, "container", container, "dir", dir)
 	req := c.clientset.CoreV1().RESTClient().Post().
 		Resource("pods").Name(pod).Namespace(namespace).SubResource("exec").
 		Param("container", container).
-		Param("command", "ls").
-		Param("command", "-lhF").
+		Param("command", "/bin/ls").
+		Param("command", "-lh").
 		Param("command", dir).
 		Param("stdout", "true").
 		Param("stderr", "true")
@@ -116,7 +118,12 @@ func (c *Client) ListFiles(ctx context.Context, namespace, pod, container, dir s
 
 // parseFileList parses the output of the `ls -lF` command and returns a slice of FileInfo structs.
 func parseFileList(output string) []models.FileInfo {
-	var files []models.FileInfo
+	fileTypeMap := map[string]string{
+		"d": "dir",
+		"-": "file",
+		"l": "link",
+	}
+	files := []models.FileInfo{}
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
 		// Skip empty lines and lines starting with "total"
@@ -128,13 +135,16 @@ func parseFileList(output string) []models.FileInfo {
 		if len(fields) < 9 {
 			continue
 		}
-		name := fields[8]
-		isDir := strings.HasSuffix(name, "/")
+		fileType, ok := fileTypeMap[fields[0][0:1]]
+		if !ok {
+			continue
+		}
+		name := strings.Join(fields[8:], " ")
 		file := models.FileInfo{
-			Name:  name,
-			IsDir: isDir,
-			Size:  fields[4],
-			Time:  fields[5] + "-" + fields[6] + " " + fields[7],
+			Name: name,
+			Type: fileType,
+			Size: fields[4],
+			Time: fields[5] + "-" + fields[6] + " " + fields[7],
 		}
 		files = append(files, file)
 	}
@@ -142,35 +152,67 @@ func parseFileList(output string) []models.FileInfo {
 }
 
 func (c *Client) DownloadFile(ctx context.Context, namespace, pod, container, filePath string, writer io.Writer) error {
+	cmd := []string{"/bin/sh", "-c", fmt.Sprintf("tar czf - %s", filePath)}
 	req := c.clientset.CoreV1().RESTClient().Post().
 		Resource("pods").Name(pod).Namespace(namespace).SubResource("exec").
 		Param("container", container).
-		Param("command", fmt.Sprintf("tar cf -C %s", filePath))
+		VersionedParams(&corev1.PodExecOptions{
+			Command: cmd,
+			Stdout:  true,
+			Stderr:  true,
+		}, scheme.ParameterCodec)
+
 	executor, err := remotecommand.NewSPDYExecutor(c.config, "POST", req.URL())
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create executor: %w", err)
 	}
 
-	return executor.StreamWithContext(ctx, remotecommand.StreamOptions{
+	errBuf := new(bytes.Buffer)
+	err = executor.StreamWithContext(ctx, remotecommand.StreamOptions{
 		Stdout: writer,
-		Stderr: os.Stderr,
+		Stderr: errBuf,
 	})
+	if err != nil {
+		errMsg := err.Error()
+		if errBuf.Len() > 0 {
+			errMsg = fmt.Sprintf("%v: %s", err, errBuf.String())
+		}
+		return fmt.Errorf("exec error: %v", errMsg)
+	}
+
+	return nil
 }
 
 func (c *Client) UploadFile(ctx context.Context, namespace, pod, container, targetDir string, reader io.Reader) error {
+	cmd := []string{"tar", "xf", "-", "-C", targetDir}
 	req := c.clientset.CoreV1().RESTClient().Post().
 		Resource("pods").Name(pod).Namespace(namespace).SubResource("exec").
 		Param("container", container).
-		Param("command", fmt.Sprintf("tar xf -C %s", targetDir))
+		VersionedParams(&corev1.PodExecOptions{
+			Command: cmd,
+			Stdin:   true,
+			Stdout:  true,
+			Stderr:  true,
+		}, scheme.ParameterCodec)
 
 	executor, err := remotecommand.NewSPDYExecutor(c.config, "POST", req.URL())
 	if err != nil {
 		return err
 	}
 
-	return executor.StreamWithContext(ctx, remotecommand.StreamOptions{
+	errBuf := new(bytes.Buffer)
+	err = executor.StreamWithContext(ctx, remotecommand.StreamOptions{
 		Stdin:  reader,
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
+		Stdout: io.Discard,
+		Stderr: errBuf,
 	})
+	if err != nil {
+		errMsg := err.Error()
+		if errBuf.Len() > 0 {
+			errMsg = fmt.Sprintf("%v: %s", err, errBuf.String())
+		}
+		return fmt.Errorf("exec error: %v", errMsg)
+	}
+
+	return nil
 }

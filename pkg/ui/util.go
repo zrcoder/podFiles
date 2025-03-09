@@ -12,7 +12,7 @@ func page(app *amisgo.App, isHome bool, body ...any) comp.Page {
 	if !isHome {
 		toolbarBodyButtons = append(
 			[]any{
-				app.Button().Icon("fa fa-home").Label("${i18n.home}").ActionType("link").Link("/").ClassName("bg-none border-none"),
+				app.Button().Icon("fa fa-home").Label("${i18n.home}").ActionType("link").Link("/").Reload("/").ClassName("bg-none border-none"),
 				app.Wrapper(),
 			},
 			toolbarBodyButtons...,
