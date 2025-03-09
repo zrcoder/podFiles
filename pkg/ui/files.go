@@ -17,17 +17,17 @@ func FileList(app *amisgo.App) comp.Page {
 				app.Column().Name("time").Label("${i18n.podFile.modifyTime}"),
 				app.Column().Type("operation").Buttons(
 					app.Button().
+						VisibleOn("${type!=='link'}").
 						Icon("fa fa-download").
 						Label("${i18n.podFile.download}").
-						ActionType("ajax").
-						ConfirmText("${i18n.podFile.confirmDownload}"+"${event.data.item.name}").
-						Api("post:"+api.Download+"?file=${event.data.item.name}"),
+						ActionType("download").
+						Api("post:"+api.Download+"?file=${name}&type=${type}"),
 					app.Button().
-						VisibleOn("${isDir}").
+						VisibleOn("${type==='dir'}").
 						Icon("fa fa-folder-open").
 						Label("${i18n.podFile.open}").
 						ActionType("ajax").
-						Api(api.Files).
+						Api("post:"+api.Files+"?dir=${name}").
 						Reload("files"),
 				),
 			).
