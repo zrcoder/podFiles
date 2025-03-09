@@ -1,6 +1,7 @@
 package models
 
 import (
+	"errors"
 	"strings"
 )
 
@@ -14,6 +15,10 @@ type Pod struct {
 
 type Container struct {
 	Container string `json:"container"`
+}
+
+type BreadcrumbItem struct {
+	Label string `json:"label"`
 }
 
 type FileInfo struct {
@@ -53,20 +58,18 @@ func (s *State) AddPath(path string) {
 	s.Path = append(s.Path, path)
 }
 
-// func (s *State) Normalize() {
-// 	s.ApiPath = s.Api()
-// 	s.FSPath = s.fsPath()
-// }
-
-// func (s *State) Api() string {
-// 	path := []string{s.Namespace, s.Pod, s.Container}
-// 	fsPath := s.fsPath()
-// 	if fsPath != "" {
-// 		path = append(path, fsPath)
-// 	}
-// 	return strings.Join(path, "/")
-// }
+func (s *State) PopPath() error {
+	if len(s.Path) == 0 {
+		return errors.New("path is empty")
+	}
+	s.Path = s.Path[:len(s.Path)-1]
+	return nil
+}
 
 func (s *State) FSPath() string {
-	return strings.Join(s.Path, "/")
+	return "/" + strings.Join(s.Path, "/")
+}
+
+func (s *State) InSubDir() bool {
+	return len(s.Path) > 0
 }

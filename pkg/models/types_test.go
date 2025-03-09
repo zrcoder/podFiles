@@ -15,28 +15,28 @@ func TestState_FSPath(t *testing.T) {
 			state: &State{
 				Path: nil,
 			},
-			want: "",
+			want: "/",
 		},
 		{
 			name: "empty",
 			state: &State{
 				Path: []string{},
 			},
-			want: "",
+			want: "/",
 		},
 		{
 			name: "one",
 			state: &State{
 				Path: []string{"a"},
 			},
-			want: "a",
+			want: "/a",
 		},
 		{
 			name: "two",
 			state: &State{
 				Path: []string{"a", "b"},
 			},
-			want: "a/b",
+			want: "/a/b",
 		},
 	}
 	for _, tt := range tests {

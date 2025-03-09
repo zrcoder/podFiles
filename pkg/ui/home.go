@@ -12,7 +12,7 @@ const (
 )
 
 func Index(app *amisgo.App) comp.Page {
-	return page(app, true, app.Group().Body(nsList(app), podList(app), containerList(app)))
+	return page(app, app.Group().Body(nsList(app), podList(app), containerList(app)))
 }
 
 func nsList(app *amisgo.App) comp.Crud {
