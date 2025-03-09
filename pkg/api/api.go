@@ -30,6 +30,7 @@ const (
 	podsPath       = "pods"
 	containersPath = "containers"
 	filesPath      = "files"
+	fsPathPath     = "fsPath"
 	uploadPath     = "upload"
 	downloadPath   = "download"
 
@@ -69,7 +70,7 @@ func New() http.Handler {
 		api.GET(containersPath, listContainers)
 		api.POST(containersPath, setContainer)
 		api.GET(filesPath, listFiles)
-		api.POST(filesPath, appendPath)
+		api.POST(filesPath, setPath)
 		api.POST(uploadPath, upload)
 		api.POST(downloadPath, download)
 	}
@@ -84,7 +85,7 @@ func listNamespaces(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, schema.ErrorResponse(err.Error()))
 		return
 	}
-	c.JSON(http.StatusOK, schema.SuccessResponse("", schema.Schema{"items": ns, "total": len(ns)}))
+	c.JSON(http.StatusOK, ns)
 }
 
 func setNamespace(c *gin.Context) {
@@ -96,22 +97,16 @@ func setNamespace(c *gin.Context) {
 	}
 	session := c.GetString(state.SessionKey)
 	state.Get(session).SetNamespace(namespace)
-	c.JSON(http.StatusOK, schema.SuccessResponse("", nil))
+	c.Status(http.StatusOK)
 }
 
 func listPods(c *gin.Context) {
 	session := c.GetString(state.SessionKey)
-	slog.Debug("get session", slog.String("session", session))
-	namespace := state.Get(session).Namespace
-	if namespace == "" {
-		slog.Info("namespace is required")
-		c.JSON(http.StatusOK, []models.Pod{})
-		return
-	}
-	pods, err := k8sClient.ListPods(c.Request.Context(), namespace)
+	slog.Debug("list pods", slog.String("session", session))
+	pods, err := k8sClient.ListPods(c.Request.Context(), session)
 	if err != nil {
 		slog.Error("list pods", log.Error(err))
-		c.JSON(http.StatusInternalServerError, schema.ErrorResponse(err.Error()))
+		c.JSON(http.StatusOK, []models.Pod{})
 		return
 	}
 	c.JSON(http.StatusOK, pods)
@@ -126,26 +121,15 @@ func setPod(c *gin.Context) {
 	}
 	session := c.GetString(state.SessionKey)
 	state.Get(session).SetPod(pod)
-	c.JSON(http.StatusOK, schema.SuccessResponse("", nil))
+	c.Status(http.StatusOK)
 }
 
 func listContainers(c *gin.Context) {
 	session := c.GetString(state.SessionKey)
-	st := state.Get(session)
-	if st.Namespace == "" {
-		slog.Info("namespace is required")
-		c.JSON(http.StatusOK, []models.Container{})
-		return
-	}
-	if st.Pod == "" {
-		slog.Info("pod is required")
-		c.JSON(http.StatusOK, []models.Container{})
-		return
-	}
-	containers, err := k8sClient.ListContainers(c.Request.Context(), st.Namespace, st.Pod)
+	containers, err := k8sClient.ListContainers(c.Request.Context(), session)
 	if err != nil {
 		slog.Error("list containers", log.Error(err))
-		c.JSON(http.StatusInternalServerError, schema.ErrorResponse(err.Error()))
+		c.JSON(http.StatusOK, []models.Container{})
 		return
 	}
 	c.JSON(http.StatusOK, containers)
@@ -160,39 +144,69 @@ func setContainer(c *gin.Context) {
 	}
 	session := c.GetString(state.SessionKey)
 	state.Get(session).SetContainer(container)
-	c.JSON(http.StatusOK, schema.SuccessResponse("", nil))
+	c.Status(http.StatusOK)
 }
 
 func listFiles(c *gin.Context) {
 	session := c.GetString(state.SessionKey)
 	st := state.Get(session)
-	if st.Namespace == "" || st.Pod == "" || st.Container == "" {
-		slog.Info("namespace, pod or container is required")
-		c.JSON(http.StatusOK, []models.FileInfo{})
+	if st == nil || st.Container == "" {
+		c.JSON(http.StatusBadRequest, schema.ErrorResponse("container is required"))
 		return
 	}
-	files, err := k8sClient.ListFiles(c.Request.Context(), st.Namespace, st.Pod, st.Container, st.FSPath())
+	files, err := k8sClient.ListFiles(c.Request.Context(), c.GetString(state.SessionKey))
 	if err != nil {
 		slog.Error("list files", log.Error(err))
 		c.JSON(http.StatusInternalServerError, schema.ErrorResponse(err.Error()))
 		return
 	}
 	slog.Debug("list files", "files", files)
-	c.JSON(http.StatusOK, files)
+	c.JSON(http.StatusOK, schema.SuccessResponse("success", schema.Schema{
+		"files":      files,
+		"breadItems": getBreadcrumbs(st),
+		"inSubDir":   st.InSubDir(),
+	}))
 }
 
-func appendPath(c *gin.Context) {
+func setPath(c *gin.Context) {
 	session := c.GetString(state.SessionKey)
 	st := state.Get(session)
+	back := c.Query("back")
+	if back == "true" {
+		popPath(c, st)
+		return
+	}
+	appendPath(c, st)
+}
+
+func popPath(c *gin.Context, st *models.State) {
+	err := st.PopPath()
+	if err != nil {
+		slog.Error("pop path", log.Error(err))
+		c.JSON(http.StatusBadRequest, schema.ErrorResponse(err.Error()))
+		return
+	}
+}
+
+func appendPath(c *gin.Context, st *models.State) {
 	dir := strings.TrimRight(c.Query("dir"), "/")
 	if dir == "" {
-		slog.Error("directory is required")
 		c.JSON(http.StatusBadRequest, schema.ErrorResponse("directory is required"))
 		return
 	}
 	slog.Debug("append path", slog.String("path", dir))
+
 	st.AddPath(dir)
-	c.JSON(http.StatusOK, schema.SuccessResponse("", nil))
+	c.Status(http.StatusOK)
+}
+
+func getBreadcrumbs(st *models.State) []models.BreadcrumbItem {
+	return []models.BreadcrumbItem{
+		{Label: st.Namespace},
+		{Label: st.Pod},
+		{Label: st.Container},
+		{Label: st.FSPath()},
+	}
 }
 
 func upload(c *gin.Context) {
@@ -239,20 +253,16 @@ func upload(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, schema.ErrorResponse(err.Error()))
 		return
 	}
-
-	c.JSON(http.StatusOK, schema.SuccessResponse("File uploaded successfully", nil))
 }
 
 func download(c *gin.Context) {
 	session := c.GetString(state.SessionKey)
-	st := state.Get(session)
 	file := c.Query("file")
 	file = strings.Trim(file, "/")
-	path := st.FSPath() + "/" + file
-	slog.Debug("download file", slog.String("path", path))
+	slog.Debug("download", slog.String("path", file))
 	c.Header("Content-Type", "application/octet-stream")
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s.tgz", file))
-	err := k8sClient.DownloadFile(c.Request.Context(), st.Namespace, st.Pod, st.Container, path, c.Writer)
+	err := k8sClient.DownloadFile(c.Request.Context(), session, file, c.Writer)
 	if err != nil {
 		slog.Error("download file failed", log.Error(err))
 		c.JSON(http.StatusInternalServerError, schema.ErrorResponse(err.Error()))

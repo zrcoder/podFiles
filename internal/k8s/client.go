@@ -3,12 +3,14 @@ package k8s
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"strings"
 
 	"github.com/zrcoder/podFiles/pkg/models"
+	"github.com/zrcoder/podFiles/pkg/state"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,8 +53,14 @@ func (c *Client) ListNamespaces(ctx context.Context) ([]models.Namespace, error)
 	return ns, nil
 }
 
-func (c *Client) ListPods(ctx context.Context, namespace string) ([]models.Pod, error) {
-	list, err := c.clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+func (c *Client) ListPods(ctx context.Context, session string) ([]models.Pod, error) {
+	st := state.Get(session)
+	if st.Namespace == "" {
+		msg := "namespace is required"
+		slog.Error(msg)
+		return nil, errors.New(msg)
+	}
+	list, err := c.clientset.CoreV1().Pods(st.Namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -66,8 +74,14 @@ func (c *Client) ListPods(ctx context.Context, namespace string) ([]models.Pod, 
 	return names, nil
 }
 
-func (c *Client) ListContainers(ctx context.Context, namespace, pod string) ([]models.Container, error) {
-	p, err := c.clientset.CoreV1().Pods(namespace).Get(ctx, pod, metav1.GetOptions{})
+func (c *Client) ListContainers(ctx context.Context, session string) ([]models.Container, error) {
+	st := state.Get(session)
+	if st.Namespace == "" || st.Pod == "" {
+		msg := "namespace and pod are required"
+		slog.Error(msg)
+		return nil, errors.New(msg)
+	}
+	p, err := c.clientset.CoreV1().Pods(st.Namespace).Get(ctx, st.Pod, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -81,15 +95,22 @@ func (c *Client) ListContainers(ctx context.Context, namespace, pod string) ([]m
 	return containers, nil
 }
 
-func (c *Client) ListFiles(ctx context.Context, namespace, pod, container, dir string) ([]models.FileInfo, error) {
+func (c *Client) ListFiles(ctx context.Context, session string) ([]models.FileInfo, error) {
+	st := state.Get(session)
+	if st.Namespace == "" || st.Pod == "" || st.Container == "" {
+		msg := "namespace, pod or container is required"
+		slog.Info(msg)
+		return nil, errors.New(msg)
+	}
+	dir := st.FSPath()
 	if dir == "" {
 		dir = "/"
 	}
-	slog.Debug("list files", "namespace", namespace, "pod", pod, "container", container, "dir", dir)
+	slog.Debug("list files", "namespace", st.Namespace, "pod", st.Pod, "container", st.Container, "dir", dir)
 	req := c.clientset.CoreV1().RESTClient().Post().
-		Resource("pods").Name(pod).Namespace(namespace).SubResource("exec").
-		Param("container", container).
-		Param("command", "/bin/ls").
+		Resource("pods").Name(st.Pod).Namespace(st.Namespace).SubResource("exec").
+		Param("container", st.Container).
+		Param("command", "ls").
 		Param("command", "-lh").
 		Param("command", dir).
 		Param("stdout", "true").
@@ -151,11 +172,19 @@ func parseFileList(output string) []models.FileInfo {
 	return files
 }
 
-func (c *Client) DownloadFile(ctx context.Context, namespace, pod, container, filePath string, writer io.Writer) error {
-	cmd := []string{"/bin/sh", "-c", fmt.Sprintf("tar czf - %s", filePath)}
+func (c *Client) DownloadFile(ctx context.Context, session, filePath string, writer io.Writer) error {
+	st := state.Get(session)
+	if st.Namespace == "" || st.Pod == "" || st.Container == "" {
+		msg := "namespace, pod or container is required"
+		slog.Error(msg)
+		return errors.New(msg)
+	}
+	slog.Debug("download file", "namespace", st.Namespace, "pod", st.Pod, "container", st.Container, "file", filePath)
+	shellCmd := fmt.Sprintf("cd %s && tar czf - %s", st.FSPath(), filePath)
+	cmd := []string{"/bin/sh", "-c", shellCmd}
 	req := c.clientset.CoreV1().RESTClient().Post().
-		Resource("pods").Name(pod).Namespace(namespace).SubResource("exec").
-		Param("container", container).
+		Resource("pods").Name(st.Pod).Namespace(st.Namespace).SubResource("exec").
+		Param("container", st.Container).
 		VersionedParams(&corev1.PodExecOptions{
 			Command: cmd,
 			Stdout:  true,

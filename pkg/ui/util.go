@@ -5,22 +5,10 @@ import (
 	"github.com/zrcoder/amisgo/comp"
 )
 
-func page(app *amisgo.App, isHome bool, body ...any) comp.Page {
-	toolbarBodyButtons := []any{
-		app.LocaleButtonGroupSelect(),
-	}
-	if !isHome {
-		toolbarBodyButtons = append(
-			[]any{
-				app.Button().Icon("fa fa-home").Label("${i18n.home}").ActionType("link").Link("/").Reload("/").ClassName("bg-none border-none"),
-				app.Wrapper(),
-			},
-			toolbarBodyButtons...,
-		)
-	}
+func page(app *amisgo.App, body ...any) comp.Page {
 	return app.Page().
 		Title("${i18n.name}").
-		Toolbar(app.InputGroup().Body(toolbarBodyButtons...).ClassName("my-2")).
+		Toolbar(app.LocaleButtonGroupSelect()).ClassName("my-2").
 		Body(body)
 }
 
