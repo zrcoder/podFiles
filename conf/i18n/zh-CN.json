@@ -24,7 +24,8 @@
         "containers": "容器",
         "namespace": "命名空间",
         "pod": "Pod",
-        "container": "容器"
+        "container": "容器",
+        "runningPods": "Pods(Running)"
     },
     "user": {
         "login": "登录",

@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/zrcoder/podFiles/pkg/models"
+	"github.com/zrcoder/podFiles/internal/models"
 
 	"github.com/patrickmn/go-cache"
 )

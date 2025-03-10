@@ -24,6 +24,7 @@
         "containers": "Containers",
         "namespace": "Namespace",
         "pod": "Pod",
+        "runningPods": "Pods(Running)",
         "container": "Container"
     },
     "user": {

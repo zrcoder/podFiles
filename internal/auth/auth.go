@@ -7,8 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/zrcoder/amisgo/util"
-	"github.com/zrcoder/podFiles/pkg/state"
-	"github.com/zrcoder/podFiles/pkg/util/log"
+	"github.com/zrcoder/podFiles/internal/state"
+	"github.com/zrcoder/podFiles/internal/util/log"
 )
 
 func Auth(c *gin.Context) {
