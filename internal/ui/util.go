@@ -7,8 +7,9 @@ import (
 
 func page(app *amisgo.App, body ...any) comp.Page {
 	return app.Page().
+		BodyClassName("bg-light").
 		Title("${i18n.name}").
-		Toolbar(app.LocaleButtonGroupSelect()).ClassName("my-2").
+		Toolbar(app.LocaleButtonGroupSelect()).
 		Body(body)
 }
 
@@ -16,7 +17,8 @@ func crud(app *amisgo.App) comp.Crud {
 	return app.Crud().
 		SyncLocation(false).
 		LoadDataOnce(true).
-		HeaderToolbar(
+		FooterToolbar(
+			"statistics",
 			"switch-per-page",
 			"pagination",
 		)
