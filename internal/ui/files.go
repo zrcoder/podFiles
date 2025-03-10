@@ -10,7 +10,7 @@ func FileList(app *amisgo.App) comp.Page {
 	return page(
 		app,
 		app.Service().Name("files").Api(api.Files).Body(
-			app.Flex().ClassName("bg-white h-10").AlignItems("center").Justify("flex-start").Items(
+			app.Flex().ClassName("h-10").AlignItems("center").Justify("flex-start").Items(
 				app.Button().Icon("fa fa-home").Label("${i18n.home}").
 					ActionType("link").Link("/").Reload("/"),
 				app.Wrapper(),
