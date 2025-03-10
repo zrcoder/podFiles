@@ -1,7 +1,7 @@
 package ui
 
 import (
-	"github.com/zrcoder/podFiles/pkg/api"
+	"github.com/zrcoder/podFiles/internal/api"
 
 	"github.com/zrcoder/amisgo"
 	"github.com/zrcoder/amisgo/comp"
@@ -18,7 +18,7 @@ func Index(app *amisgo.App) comp.Page {
 func nsList(app *amisgo.App) comp.Crud {
 	return crud(app).Name("ns").Api(api.Namespaces).
 		Columns(
-			app.Column().Name("namespace").Searchable(true).Label("${i18n.k8s.namespace}"),
+			app.Column().Name("namespace").Searchable(true).Label("${i18n.k8s.namespaces}"),
 		).
 		OnEvent(
 			app.Event().RowClick(
@@ -34,7 +34,7 @@ func nsList(app *amisgo.App) comp.Crud {
 func podList(app *amisgo.App) comp.Crud {
 	return crud(app).Name("pods").Api(api.Pods).
 		Columns(
-			app.Column().Name("pod").Searchable(true).Label("${i18n.k8s.pod}"),
+			app.Column().Name("pod").Searchable(true).Label("${i18n.k8s.runningPods}"),
 		).
 		OnEvent(
 			app.Event().RowClick(
@@ -49,7 +49,7 @@ func podList(app *amisgo.App) comp.Crud {
 func containerList(app *amisgo.App) comp.Crud {
 	return crud(app).Name("containers").Api(api.Containers).
 		Columns(
-			app.Column().Name("container").Searchable(true).Label("${i18n.k8s.container}"),
+			app.Column().Name("container").Searchable(true).Label("${i18n.k8s.containers}"),
 		).
 		OnEvent(
 			app.Event().RowClick(

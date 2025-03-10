@@ -3,7 +3,7 @@ package ui
 import (
 	"github.com/zrcoder/amisgo"
 	"github.com/zrcoder/amisgo/comp"
-	"github.com/zrcoder/podFiles/pkg/api"
+	"github.com/zrcoder/podFiles/internal/api"
 )
 
 func FileList(app *amisgo.App) comp.Page {
@@ -26,7 +26,7 @@ func FileList(app *amisgo.App) comp.Page {
 						Body(
 							app.InputFile().Receiver(api.Upload).Drag(true).UseChunk(false),
 							app.Flex().Justify("center").Items(
-								app.Button().Label("Done").ActionType("reload").Target("files").Close("upload"),
+								app.Button().Label("${i18n.podFile.done}").ActionType("reload").Target("files").Close("upload"),
 							),
 						),
 				),

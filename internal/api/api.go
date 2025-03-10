@@ -11,11 +11,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/zrcoder/amisgo/schema"
+	"github.com/zrcoder/podFiles/internal/auth"
 	"github.com/zrcoder/podFiles/internal/k8s"
-	"github.com/zrcoder/podFiles/pkg/auth"
-	"github.com/zrcoder/podFiles/pkg/models"
-	"github.com/zrcoder/podFiles/pkg/state"
-	"github.com/zrcoder/podFiles/pkg/util/log"
+	"github.com/zrcoder/podFiles/internal/models"
+	"github.com/zrcoder/podFiles/internal/state"
+	"github.com/zrcoder/podFiles/internal/util/log"
 )
 
 const (
@@ -80,7 +80,7 @@ func New() http.Handler {
 }
 
 func listNamespaces(c *gin.Context) {
-	ns, err := k8sClient.ListNamespaces(c.Request.Context())
+	ns, err := k8sClient.ListCommonNamespaces(c.Request.Context())
 	if err != nil {
 		slog.Error("list namespaces", log.Error(err))
 		c.JSON(http.StatusInternalServerError, schema.ErrorResponse(err.Error()))
@@ -104,7 +104,7 @@ func setNamespace(c *gin.Context) {
 func listPods(c *gin.Context) {
 	session := c.GetString(state.SessionKey)
 	slog.Debug("list pods", slog.String("session", session))
-	pods, err := k8sClient.ListPods(c.Request.Context(), session)
+	pods, err := k8sClient.ListRunningPods(c.Request.Context(), session)
 	if err != nil {
 		slog.Error("list pods", log.Error(err))
 		c.JSON(http.StatusOK, []models.Pod{})

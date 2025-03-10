@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 
-	"github.com/zrcoder/podFiles/pkg/api"
-	"github.com/zrcoder/podFiles/pkg/auth"
-	"github.com/zrcoder/podFiles/pkg/conf"
-	"github.com/zrcoder/podFiles/pkg/ui"
+	"github.com/zrcoder/podFiles/conf"
+	"github.com/zrcoder/podFiles/internal/api"
+	"github.com/zrcoder/podFiles/internal/auth"
+	"github.com/zrcoder/podFiles/internal/ui"
 
 	"github.com/zrcoder/amisgo"
 )

@@ -10,8 +10,8 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/zrcoder/podFiles/pkg/models"
-	"github.com/zrcoder/podFiles/pkg/state"
+	"github.com/zrcoder/podFiles/internal/models"
+	"github.com/zrcoder/podFiles/internal/state"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,6 +24,12 @@ import (
 
 // FileBufferSize defines the standard buffer size used for I/O operations
 const FileBufferSize = 32 * 1024 // 32KB
+
+// FileTypeMap maps file type indicators from ls output to readable types
+var fileTypeMap = map[string]string{
+	"d": "dir",
+	"-": "file",
+}
 
 // Client represents a Kubernetes client
 type Client struct {
@@ -43,7 +49,7 @@ func New() (*Client, error) {
 	return &Client{clientset: clientset, config: config}, nil
 }
 
-func (c *Client) ListNamespaces(ctx context.Context) ([]models.Namespace, error) {
+func (c *Client) ListCommonNamespaces(ctx context.Context) ([]models.Namespace, error) {
 	list, err := c.clientset.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
@@ -51,6 +57,9 @@ func (c *Client) ListNamespaces(ctx context.Context) ([]models.Namespace, error)
 	ns := make([]models.Namespace, 0, len(list.Items))
 	for _, n := range list.Items {
 		slog.Debug("namespace", "name", n.Name)
+		if strings.HasPrefix(n.Name, "kube-") {
+			continue
+		}
 		ns = append(ns, models.Namespace{
 			Namespace: n.Name,
 		})
@@ -58,7 +67,7 @@ func (c *Client) ListNamespaces(ctx context.Context) ([]models.Namespace, error)
 	return ns, nil
 }
 
-func (c *Client) ListPods(ctx context.Context, session string) ([]models.Pod, error) {
+func (c *Client) ListRunningPods(ctx context.Context, session string) ([]models.Pod, error) {
 	st := state.Get(session)
 	if st.Namespace == "" {
 		msg := "namespace is required"
@@ -71,7 +80,10 @@ func (c *Client) ListPods(ctx context.Context, session string) ([]models.Pod, er
 	}
 	names := make([]models.Pod, 0, len(list.Items))
 	for _, pod := range list.Items {
-		slog.Debug("pod", "name", pod.Name)
+		slog.Debug("pod", slog.String("name", pod.Name), slog.String("status", string(pod.Status.Phase)))
+		if pod.Status.Phase != corev1.PodRunning {
+			continue
+		}
 		names = append(names, models.Pod{
 			Pod: pod.Name,
 		})
@@ -147,11 +159,6 @@ func (c *Client) ListFiles(ctx context.Context, st *models.State) ([]models.File
 
 // parseFileList parses the output of the `ls -lF` command and returns a slice of FileInfo structs.
 func parseFileList(output string) []models.FileInfo {
-	fileTypeMap := map[string]string{
-		"d": "dir",
-		"-": "file",
-		"l": "link",
-	}
 	files := []models.FileInfo{}
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
