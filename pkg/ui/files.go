@@ -19,6 +19,17 @@ func FileList(app *amisgo.App) comp.Page {
 				app.Button().Icon("fa fa-folder-open").Label("..").VisibleOn("${inSubDir}").
 					ActionType("ajax").Api("post:"+api.Files+"?back=true").Reload("files"),
 				app.Wrapper(),
+				app.Button().Icon("fa fa-upload").Label("${i18n.podFile.upload}").
+					ActionType("drawer").Drawer(
+					app.Drawer().Name("upload").Position("bottom").
+						Actions().
+						Body(
+							app.InputFile().Receiver(api.Upload).Drag(true).UseChunk(false),
+							app.Flex().Justify("center").Items(
+								app.Button().Label("Done").ActionType("reload").Target("files").Close("upload"),
+							),
+						),
+				),
 			),
 
 			crud(app).ClassName("mt-2").Source("${files}").

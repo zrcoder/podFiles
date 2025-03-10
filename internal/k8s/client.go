@@ -95,8 +95,7 @@ func (c *Client) ListContainers(ctx context.Context, session string) ([]models.C
 	return containers, nil
 }
 
-func (c *Client) ListFiles(ctx context.Context, session string) ([]models.FileInfo, error) {
-	st := state.Get(session)
+func (c *Client) ListFiles(ctx context.Context, st *models.State) ([]models.FileInfo, error) {
 	if st.Namespace == "" || st.Pod == "" || st.Container == "" {
 		msg := "namespace, pod or container is required"
 		slog.Info(msg)

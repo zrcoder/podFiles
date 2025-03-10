@@ -154,7 +154,7 @@ func listFiles(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, schema.ErrorResponse("container is required"))
 		return
 	}
-	files, err := k8sClient.ListFiles(c.Request.Context(), c.GetString(state.SessionKey))
+	files, err := k8sClient.ListFiles(c.Request.Context(), st)
 	if err != nil {
 		slog.Error("list files", log.Error(err))
 		c.JSON(http.StatusInternalServerError, schema.ErrorResponse(err.Error()))
@@ -162,9 +162,14 @@ func listFiles(c *gin.Context) {
 	}
 	slog.Debug("list files", "files", files)
 	c.JSON(http.StatusOK, schema.SuccessResponse("success", schema.Schema{
-		"files":      files,
-		"breadItems": getBreadcrumbs(st),
-		"inSubDir":   st.InSubDir(),
+		"files": files,
+		"breadItems": []models.BreadcrumbItem{
+			{Label: st.Namespace},
+			{Label: st.Pod},
+			{Label: st.Container},
+			{Label: st.FSPath()},
+		},
+		"inSubDir": st.InSubDir(),
 	}))
 }
 
@@ -198,15 +203,6 @@ func appendPath(c *gin.Context, st *models.State) {
 
 	st.AddPath(dir)
 	c.Status(http.StatusOK)
-}
-
-func getBreadcrumbs(st *models.State) []models.BreadcrumbItem {
-	return []models.BreadcrumbItem{
-		{Label: st.Namespace},
-		{Label: st.Pod},
-		{Label: st.Container},
-		{Label: st.FSPath()},
-	}
 }
 
 func upload(c *gin.Context) {
