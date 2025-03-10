@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
@@ -21,6 +22,10 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 )
 
+// FileBufferSize defines the standard buffer size used for I/O operations
+const FileBufferSize = 32 * 1024 // 32KB
+
+// Client represents a Kubernetes client
 type Client struct {
 	clientset *kubernetes.Clientset
 	config    *rest.Config
@@ -101,19 +106,23 @@ func (c *Client) ListFiles(ctx context.Context, st *models.State) ([]models.File
 		slog.Info(msg)
 		return nil, errors.New(msg)
 	}
+
 	dir := st.FSPath()
 	if dir == "" {
 		dir = "/"
 	}
+
 	slog.Debug("list files", "namespace", st.Namespace, "pod", st.Pod, "container", st.Container, "dir", dir)
+
+	cmd := []string{"ls", "-lh", dir}
 	req := c.clientset.CoreV1().RESTClient().Post().
 		Resource("pods").Name(st.Pod).Namespace(st.Namespace).SubResource("exec").
-		Param("container", st.Container).
-		Param("command", "ls").
-		Param("command", "-lh").
-		Param("command", dir).
-		Param("stdout", "true").
-		Param("stderr", "true")
+		VersionedParams(&corev1.PodExecOptions{
+			Container: st.Container,
+			Command:   cmd,
+			Stdout:    true,
+			Stderr:    true,
+		}, scheme.ParameterCodec)
 
 	executor, err := remotecommand.NewSPDYExecutor(c.config, "POST", req.URL())
 	if err != nil {
@@ -174,13 +183,13 @@ func parseFileList(output string) []models.FileInfo {
 func (c *Client) DownloadFile(ctx context.Context, session, filePath string, writer io.Writer) error {
 	st := state.Get(session)
 	if st.Namespace == "" || st.Pod == "" || st.Container == "" {
-		msg := "namespace, pod or container is required"
-		slog.Error(msg)
-		return errors.New(msg)
+		return errors.New("namespace, pod or container is required")
 	}
-	slog.Debug("download file", "namespace", st.Namespace, "pod", st.Pod, "container", st.Container, "file", filePath)
+
+	// Use shell command to execute tar
 	shellCmd := fmt.Sprintf("cd %s && tar czf - %s", st.FSPath(), filePath)
 	cmd := []string{"/bin/sh", "-c", shellCmd}
+
 	req := c.clientset.CoreV1().RESTClient().Post().
 		Resource("pods").Name(st.Pod).Namespace(st.Namespace).SubResource("exec").
 		Param("container", st.Container).
@@ -195,7 +204,10 @@ func (c *Client) DownloadFile(ctx context.Context, session, filePath string, wri
 		return fmt.Errorf("failed to create executor: %w", err)
 	}
 
+	// Create a buffer for stderr
 	errBuf := new(bytes.Buffer)
+
+	// Stream directly to the writer without buffering the entire content in memory
 	err = executor.StreamWithContext(ctx, remotecommand.StreamOptions{
 		Stdout: writer,
 		Stderr: errBuf,
@@ -212,6 +224,9 @@ func (c *Client) DownloadFile(ctx context.Context, session, filePath string, wri
 }
 
 func (c *Client) UploadFile(ctx context.Context, namespace, pod, container, targetDir string, reader io.Reader) error {
+	// Use buffered reader to control memory usage
+	bufReader := bufio.NewReaderSize(reader, FileBufferSize)
+
 	cmd := []string{"tar", "xf", "-", "-C", targetDir}
 	req := c.clientset.CoreV1().RESTClient().Post().
 		Resource("pods").Name(pod).Namespace(namespace).SubResource("exec").
@@ -229,9 +244,11 @@ func (c *Client) UploadFile(ctx context.Context, namespace, pod, container, targ
 	}
 
 	errBuf := new(bytes.Buffer)
+
+	// Stream data directly from reader to pod without buffering entire content
 	err = executor.StreamWithContext(ctx, remotecommand.StreamOptions{
-		Stdin:  reader,
-		Stdout: io.Discard,
+		Stdin:  bufReader,
+		Stdout: io.Discard, // Discard stdout
 		Stderr: errBuf,
 	})
 	if err != nil {
