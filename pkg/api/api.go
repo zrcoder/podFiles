@@ -2,6 +2,7 @@ package api
 
 import (
 	"archive/tar"
+	"bufio"
 	"fmt"
 	"io"
 	"log/slog"
@@ -206,6 +207,7 @@ func appendPath(c *gin.Context, st *models.State) {
 }
 
 func upload(c *gin.Context) {
+	// Get the uploaded file
 	file, err := c.FormFile("file")
 	if err != nil {
 		slog.Error("upload file", log.Error(err))
@@ -221,10 +223,16 @@ func upload(c *gin.Context) {
 	}
 	defer src.Close()
 
+	// Create a pipe for streaming data
 	pr, pw := io.Pipe()
+
+	// Use a goroutine to write data to the pipe
 	go func() {
 		defer pw.Close()
-		tw := tar.NewWriter(pw)
+
+		// Use buffered writer to reduce memory pressure
+		bufWriter := bufio.NewWriterSize(pw, k8s.FileBufferSize)
+		tw := tar.NewWriter(bufWriter)
 		defer tw.Close()
 
 		hdr := &tar.Header{
@@ -233,22 +241,44 @@ func upload(c *gin.Context) {
 			Size: file.Size,
 		}
 		if err := tw.WriteHeader(hdr); err != nil {
-			slog.Error("upload file", log.Error(err))
+			slog.Error("failed to write tar header", log.Error(err))
 			return
 		}
-		if _, err := io.Copy(tw, src); err != nil {
-			slog.Error("upload file", log.Error(err))
+
+		// Use a buffer for copying to control memory usage
+		buf := make([]byte, k8s.FileBufferSize)
+
+		// Use CopyBuffer instead of Copy for better memory control
+		_, err := io.CopyBuffer(tw, src, buf)
+		if err != nil {
+			slog.Error("failed to copy file data", log.Error(err))
+			return
+		}
+
+		// Ensure all data is flushed
+		if err := tw.Flush(); err != nil {
+			slog.Error("failed to flush tar writer", log.Error(err))
+			return
+		}
+
+		if err := bufWriter.Flush(); err != nil {
+			slog.Error("failed to flush buffer", log.Error(err))
 			return
 		}
 	}()
+
 	session := c.GetString(state.SessionKey)
 	st := state.Get(session)
+
+	// Upload the file to the pod
 	err = k8sClient.UploadFile(c.Request.Context(), st.Namespace, st.Pod, st.Container, st.FSPath(), pr)
 	if err != nil {
 		slog.Error("upload file", log.Error(err))
 		c.JSON(http.StatusInternalServerError, schema.ErrorResponse(err.Error()))
 		return
 	}
+
+	c.JSON(http.StatusOK, schema.SuccessResponse("", schema.Schema{"value": "success"}))
 }
 
 func download(c *gin.Context) {
@@ -256,12 +286,27 @@ func download(c *gin.Context) {
 	file := c.Query("file")
 	file = strings.Trim(file, "/")
 	slog.Debug("download", slog.String("path", file))
+
+	// Set response headers
 	c.Header("Content-Type", "application/octet-stream")
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s.tgz", file))
-	err := k8sClient.DownloadFile(c.Request.Context(), session, file, c.Writer)
-	if err != nil {
-		slog.Error("download file failed", log.Error(err))
-		c.JSON(http.StatusInternalServerError, schema.ErrorResponse(err.Error()))
-		return
-	}
+
+	// Set Transfer-Encoding to chunked for streaming
+	c.Header("Transfer-Encoding", "chunked")
+
+	// Use Gin's Stream method for streaming response
+	c.Stream(func(w io.Writer) bool {
+		// Create a buffered writer to reduce memory pressure
+		bufWriter := bufio.NewWriterSize(w, k8s.FileBufferSize)
+
+		err := k8sClient.DownloadFile(c.Request.Context(), session, file, bufWriter)
+		if err != nil {
+			slog.Error("download file failed", log.Error(err))
+		}
+
+		// Ensure all data is flushed
+		bufWriter.Flush()
+
+		return false // Return false to end the stream
+	})
 }
