@@ -14,7 +14,8 @@
         "modifyTime": "Modify Time",
         "open": "Open",
         "download": "Download",
-        "folder": "Folder"
+        "upload": "Upload",
+        "done": "Done"
     },
     "k8s": {
         "name": "Name",
