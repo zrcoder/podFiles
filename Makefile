@@ -1,58 +1,99 @@
+# Version information
+VERSION ?= 0.0.1
+IMAGE_NAME ?= podfiles
+IMAGE_TAG ?= $(VERSION)
+
 export DEV=1
 
+# Default target
+.DEFAULT_GOAL := all
+
+# Test the application and generate install script
+all: test gen-script
+
+# Generate the install script
+gen-script:
+	@echo "Generating install script..."
+	@go run ./cmd/deploy/gen.go
+
+# Build and tag docker image
+build-image:
+	@echo "Building docker image $(IMAGE_NAME):$(IMAGE_TAG)..."
+	@docker build -t $(IMAGE_NAME):$(IMAGE_TAG) .
+	@docker tag $(IMAGE_NAME):$(IMAGE_TAG) $(IMAGE_NAME):latest
+
 # Build the application
-all: build test
-
 build:
-	@echo "Building..."
-	@go build -o main ./cmd/podFiles
+	@echo "Building binary..."
+	@go build -o bin/podfiles ./cmd/podFiles
 
-# Run the application
+# Run the application locally
 run:
+	@echo "Running locally..."
 	@go run ./cmd/podFiles
-# Create DB container
+
+# Run with docker-compose, supporting both V1 and V2
 docker-run:
-	@if docker compose up --build 2>/dev/null; then \
-		: ; \
+	@echo "Starting with docker-compose..."
+	@if command -v docker compose >/dev/null 2>&1; then \
+		docker compose up --build; \
 	else \
-		echo "Falling back to Docker Compose V1"; \
 		docker-compose up --build; \
 	fi
 
-# Shutdown DB container
+# Stop docker-compose services
 docker-down:
-	@if docker compose down 2>/dev/null; then \
-		: ; \
+	@echo "Stopping docker-compose..."
+	@if command -v docker compose >/dev/null 2>&1; then \
+		docker compose down; \
 	else \
-		echo "Falling back to Docker Compose V1"; \
 		docker-compose down; \
 	fi
 
-# Test the application
+# Run tests with coverage
 test:
-	@echo "Testing..."
-	@go test ./... -v
+	@echo "Running tests..."
+	@go test -v -race -cover ./...
 
-# Clean the binary
+# Clean build artifacts
 clean:
 	@echo "Cleaning..."
-	@rm -f main
+	@rm -rf bin/
+	@rm -f install.sh
 
-# Live Reload
+# Live reload for development
 watch:
-	@if command -v air > /dev/null; then \
-            air; \
-            echo "Watching...";\
-        else \
-            read -p "Go's 'air' is not installed on your machine. Do you want to install it? [Y/n] " choice; \
-            if [ "$$choice" != "n" ] && [ "$$choice" != "N" ]; then \
-                go install github.com/air-verse/air@latest; \
-                air; \
-                echo "Watching...";\
-            else \
-                echo "You chose not to install air. Exiting..."; \
-                exit 1; \
-            fi; \
-        fi
+	@if command -v air >/dev/null 2>&1; then \
+		echo "Starting air..."; \
+		air; \
+	else \
+		echo "Air is not installed. Installing..."; \
+		go install github.com/air-verse/air@latest; \
+		echo "Starting air..."; \
+		air; \
+	fi
 
-.PHONY: all build run test clean watch docker-run docker-down itest
+# Show version information
+version:
+	@echo "Version: $(VERSION)"
+	@echo "Image: $(IMAGE_NAME):$(IMAGE_TAG)"
+
+# Help target
+help:
+	@echo "podFiles $(VERSION)"
+	@echo
+	@echo "Available targets:"
+	@echo "  all          - Test and generate install script"
+	@echo "  build        - Build the binary"
+	@echo "  build-image  - Build docker image ($(IMAGE_NAME):$(IMAGE_TAG))"
+	@echo "  run          - Run locally"
+	@echo "  docker-run   - Run with docker-compose"
+	@echo "  docker-down  - Stop docker-compose services"
+	@echo "  test         - Run tests"
+	@echo "  clean        - Clean build artifacts"
+	@echo "  watch        - Run with live reload"
+	@echo "  gen-script   - Generate install script"
+	@echo "  version      - Show version information"
+	@echo "  help         - Show this help"
+
+.PHONY: all build run test clean watch docker-run docker-down gen-script build-image help version
