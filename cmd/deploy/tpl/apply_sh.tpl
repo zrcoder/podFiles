@@ -91,133 +91,20 @@ kubectl get namespace $NAMESPACE > /dev/null 2>&1 || kubectl create namespace $N
 # Apply cluster resources
 echo -e "${BLUE}Applying cluster resources...${NC}"
 kubectl apply -f - << EOF
-# RBAC Role
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: podfiles-role
-rules:
-  - apiGroups: [""]
-    resources:
-      - "namespaces"
-      - "pods"
-    verbs: ["get", "list"]
-  - apiGroups: [""]
-    resources: ["pods/exec"]
-    verbs: ["create", "get"]
----
-# RBAC RoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: podfiles-role-binding
-subjects:
-  - kind: ServiceAccount
-    name: podfiles-sa
-    namespace: ${NAMESPACE}
-roleRef:
-  kind: ClusterRole
-  name: podfiles-role
-  apiGroup: rbac.authorization.k8s.io
-
+{{.ClusterResources}}
 EOF
 
 # Apply namespace resources
 echo -e "${BLUE}Applying namespace resources...${NC}"
 kubectl apply -n $NAMESPACE -f - << EOF
-$(echo "# ServiceAccount
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: podfiles-sa
-
----
-# Deployment
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: podfiles
-  labels:
-    app: podfiles
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: podfiles
-  template:
-    metadata:
-      labels:
-        app: podfiles
-    spec:
-      serviceAccountName: podfiles-sa
-      containers:
-        - name: podfiles
-          image: ${IMAGE}
-          imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 8080
-              name: http
-          resources:
-            requests:
-              cpu: 100m
-              memory: 128Mi
-            limits:
-              cpu: 500m
-              memory: 256Mi
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 8080
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 8080
-            initialDelaySeconds: 5
-            periodSeconds: 10
-
----
-# Service
-apiVersion: v1
-kind: Service
-metadata:
-  name: podfiles
-spec:
-  selector:
-    app: podfiles
-  ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 8080
-  type: ${SERVICE_TYPE}
-" | IMAGE=$IMAGE envsubst)
+$(echo "{{.NamespaceResources}}" | IMAGE=$IMAGE envsubst)
 EOF
 
 # Apply ingress if domain is provided
 if [ -n "$INGRESS_DOMAIN" ]; then
     echo -e "${BLUE}Applying ingress...${NC}"
     kubectl apply -n $NAMESPACE -f - << EOF
-$(echo "apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: podfiles
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-spec:
-  ingressClassName: nginx
-  rules:
-    - host: ${INGRESS_DOMAIN}
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: podfiles
-                port:
-                  number: 80
-" | INGRESS_DOMAIN=$INGRESS_DOMAIN envsubst)
+$(echo "{{.Ingress}}" | INGRESS_DOMAIN=$INGRESS_DOMAIN envsubst)
 EOF
 fi
 

@@ -7,30 +7,15 @@ PodFiles is a Go - based project designed to interact with Kubernetes clusters. 
 ## Install
 
 ```sh
-# 1. Initialize a sparse checkout repository
-git clone --filter=blob:none --sparse https://github.com/zrcoder/podFiles
-cd podFiles
+# 1. Download the deployment script
+wget https://raw.githubusercontent.com/zrcoder/podFiles/main/cmd/deploy/apply.sh
 
-# 2. Set to download only deploy directory
-git sparse-checkout set cmd/deploy
-
-# 3. Check downloaded files
-ls -la cmd/deploy
-
-# 4. Run the install script
-cd cmd/deploy
+# 2. Make the script executable
 chmod +x apply.sh
 
-# 5. Deploy with custom settings (optional)
-./apply.sh namespace=my-ns image=my-registry.com/podfiles:v1.0.0 domain=pods.example.com
-
-# Or use default settings
+# 3. Run the deployment script
 ./apply.sh
 
-# 6. Verify the deployment
-kubectl get pods -n <namespace>
+# 4. Follow the interactive prompts to configure your deployment settings.
+# The script will guide you through setting the namespace, image and so on.
 ```
-
-After successful deployment, you can access PodFiles through:
-
-- If ingress is enabled: https://your-domain

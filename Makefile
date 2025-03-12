@@ -14,7 +14,7 @@ all: test gen-script
 # Generate the install script
 gen-script:
 	@echo "Generating install script..."
-	@go run ./cmd/deploy/gen.go
+	@go run ./cmd/deploy/main.go
 
 # Build and tag docker image
 build-image:
