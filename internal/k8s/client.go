@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/zrcoder/podFiles/conf"
 	"github.com/zrcoder/podFiles/internal/models"
 	"github.com/zrcoder/podFiles/internal/state"
 
@@ -57,7 +58,7 @@ func (c *Client) ListCommonNamespaces(ctx context.Context) ([]models.Namespace, 
 	ns := make([]models.Namespace, 0, len(list.Items))
 	for _, n := range list.Items {
 		slog.Debug("namespace", "name", n.Name)
-		if strings.HasPrefix(n.Name, "kube-") {
+		if conf.NsInBlacklist(n.Name) {
 			continue
 		}
 		ns = append(ns, models.Namespace{

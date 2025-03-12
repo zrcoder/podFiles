@@ -13,8 +13,8 @@ set -eu
 if [ -t 1 ] && command -v tput >/dev/null 2>&1 && [ "$(tput colors)" -ge 8 ]; then
     # Define colors for terminal output
     GREEN='\033[0;32m'  # Success
-    BLUE='\033[0;34m'   # Info
-    YELLOW='\033[1;33m' # Warning
+    BLUE='\033[0;36m'   # Info
+    YELLOW='\033[1;93m' # Warning
     RED='\033[0;31m'    # Error
     NC='\033[0m'        # Reset
 else
@@ -29,10 +29,15 @@ trap 'if [ -n "$RED" ]; then echo -e "${RED}[ERROR]${NC} Line $LINENO, exit code
 DEFAULT_NAMESPACE="podfiles"
 DEFAULT_IMAGE="podfiles:latest"
 DEFAULT_SERVICE_TYPE="ClusterIP"
+NS_BLACK_LIST=""
 
 # Read user input with default value
 read_input() {
-    printf "${BLUE}%s${NC} [${YELLOW}%s${NC}]: " "$1" "$2" >/dev/tty
+    if [ -z "$2" ]; then
+        printf "${BLUE}%s${NC}: " "$1" >/dev/tty
+    else
+        printf "${BLUE}%s${NC} [${YELLOW}%s${NC}]: " "$1" "$2" >/dev/tty
+    fi
     read -r input </dev/tty
     echo "${input:-$2}"
 }
@@ -50,6 +55,7 @@ read_service_type() {
     esac
 }
 
+
 # Interactive inputs
 echo -e "${GREEN}Welcome to podFiles deployment script!${NC}"
 echo -e "${BLUE}Press enter to accept default values or input your custom values.${NC}"
@@ -66,6 +72,11 @@ if [ "$SERVICE_TYPE" = "Ingress" ]; then
     SERVICE_TYPE="ClusterIP"
 fi
 
+echo
+echo -e "${BLUE}PodFiles supports the namespace blacklist configuration and will not manage the files within it.${NC}"
+echo -e "${BLUE}The list supports wildcards '*' at the beginning or end only, e.g., abc,*zz,hh*${NC}"
+NS_BLACK_LIST=$(read_input "Enter namespace black list" "")
+
 # Display configuration for confirmation
 echo
 echo -e "${GREEN}Configuration Summary:${NC}"
@@ -75,6 +86,8 @@ echo -e "${BLUE}Service Type:${NC} ${YELLOW}$SERVICE_TYPE${NC}"
 if [ -n "$INGRESS_DOMAIN" ]; then
     echo -e "  ${BLUE}Ingress Domain:${NC} ${YELLOW}$INGRESS_DOMAIN${NC}"
 fi
+echo -e "${BLUE}Namespace Black List:${NC} ${YELLOW}$NS_BLACK_LIST${NC}"
+
 
 # Ask for confirmation
 echo
@@ -96,7 +109,7 @@ EOF
 
 # Apply namespace resources
 echo -e "${BLUE}Applying namespace resources...${NC}"
-kubectl apply -n $NAMESPACE -f - << EOF
+kubectl apply -n $NAMESPACE $NS_BLACK_LIST -f - << EOF
 $(echo "{{.NamespaceResources}}" | IMAGE=$IMAGE envsubst)
 EOF
 

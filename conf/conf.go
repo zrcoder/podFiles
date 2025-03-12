@@ -6,11 +6,14 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 
 	sdk "gitee.com/rdor/amis-sdk/v6"
 	"github.com/gin-gonic/gin"
 	"github.com/zrcoder/amisgo/conf"
 )
+
+const NsBlackListEnv = "NS_BLACK_LIST"
 
 func init() {
 	if os.Getenv("DEV") != "" {
@@ -38,4 +41,46 @@ func Options() []conf.Option {
 			conf.Locale{Value: conf.LocaleEnUS, Label: "En", Dict: enUS},
 		),
 	}
+}
+
+var (
+	nsPrefixBlackList = []string{"kube-"}
+	nsSuffixBlackList []string
+	nsBlackList       []string
+)
+
+func init() {
+	list := strings.Split(os.Getenv(NsBlackListEnv), ",")
+	for _, ns := range list {
+		ns = strings.TrimSpace(ns)
+		if len(ns) == 0 {
+			continue
+		}
+		if ns[0] == '*' {
+			nsSuffixBlackList = append(nsSuffixBlackList, ns[1:])
+		} else if ns[len(ns)-1] == '*' {
+			nsPrefixBlackList = append(nsPrefixBlackList, ns[:len(ns)-1])
+		} else {
+			nsBlackList = append(nsBlackList, ns)
+		}
+	}
+}
+
+func NsInBlacklist(ns string) bool {
+	for _, v := range nsPrefixBlackList {
+		if strings.HasPrefix(ns, v) {
+			return true
+		}
+	}
+	for _, v := range nsSuffixBlackList {
+		if strings.HasSuffix(ns, v) {
+			return true
+		}
+	}
+	for _, v := range nsBlackList {
+		if ns == v {
+			return true
+		}
+	}
+	return false
 }

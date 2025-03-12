@@ -25,7 +25,7 @@ build-image:
 # Build the application
 build:
 	@echo "Building binary..."
-	@go build -o bin/podfiles ./cmd/podFiles
+	@go build -o main ./cmd/podFiles
 
 # Run the application locally
 run:
@@ -58,7 +58,7 @@ test:
 # Clean build artifacts
 clean:
 	@echo "Cleaning..."
-	@rm -rf bin/
+	@rm -f main
 	@rm -f install.sh
 
 # Live reload for development
