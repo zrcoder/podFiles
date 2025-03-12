@@ -1,6 +1,6 @@
 # PodFiles
 
-PodFiles is a Go - based project designed to interact with Kubernetes clusters. It features a concise UI that simplifies the user experience. It provides functionality to list namespaces, pods, containers, and files within a pod's container. It also supports file download and upload operations between the local environment and containers in a Kubernetes pod.
+PodFiles is a Go-based tool designed for managing files within Kubernetes pods. It provides a user-friendly interface to list namespaces, pods, and containers, and supports file download and upload operations between the local environment and pod containers.
 
 ![podFiles](podFiles.png)
 
