@@ -1,9 +1,7 @@
 # Version information
-VERSION ?= 0.0.1
+VERSION ?= 0.0.4
 IMAGE_NAME ?= podfiles
 IMAGE_TAG ?= $(VERSION)
-
-export DEV=1
 
 # Default target
 .DEFAULT_GOAL := all
@@ -21,6 +19,7 @@ build-image:
 	@echo "Building docker image $(IMAGE_NAME):$(IMAGE_TAG)..."
 	@docker build -t $(IMAGE_NAME):$(IMAGE_TAG) .
 	@docker tag $(IMAGE_NAME):$(IMAGE_TAG) $(IMAGE_NAME):latest
+	@echo "Docker image $(IMAGE_NAME):$(IMAGE_TAG) built successfully."
 
 # Build the application
 build:
@@ -30,7 +29,7 @@ build:
 # Run the application locally
 run:
 	@echo "Running locally..."
-	@go run ./cmd/podFiles
+	@DEV=1 KUBECONFIG_FILE=~/.kube/config go run ./cmd/podFiles
 
 # Run with docker-compose, supporting both V1 and V2
 docker-run:

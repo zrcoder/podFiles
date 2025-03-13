@@ -39,7 +39,7 @@ spec:
               memory: 256Mi
           env:
             - name: NS_BLACK_LIST
-              value: ${NS_BLACK_LIST}
+              value: "${NS_BLACK_LIST}"
           livenessProbe:
             httpGet:
               path: /health

@@ -3,7 +3,6 @@ module github.com/zrcoder/podFiles
 go 1.24.0
 
 require (
-	gitee.com/rdor/amis-sdk/v6 v6.11.0
 	github.com/gin-gonic/gin v1.10.0
 	github.com/google/uuid v1.6.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible

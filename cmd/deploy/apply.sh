@@ -73,9 +73,10 @@ if [ "$SERVICE_TYPE" = "Ingress" ]; then
 fi
 
 echo
-echo -e "${BLUE}PodFiles supports the namespace blacklist configuration and will not manage the files within it.${NC}"
-echo -e "${BLUE}The list supports wildcards '*' at the beginning or end only, e.g., abc,*zz,hh*${NC}"
-NS_BLACK_LIST=$(read_input "Enter namespace black list" "")
+echo -e "${BLUE}PodFiles supports namespace blacklist configuration to exclude namespaces from file management.${NC}"
+echo -e "${BLUE}The blacklist supports wildcards '*' at the beginning or end only.${NC}"
+echo -e "${BLUE}Please enter the list in single quotes, e.g., 'abc,*zz,hh*'${NC}"
+NS_BLACK_LIST=$(read_input "Enter namespace black list" "'kube-*,default'")
 
 # Display configuration for confirmation
 echo
@@ -137,7 +138,7 @@ EOF
 
 # Apply namespace resources
 echo -e "${BLUE}Applying namespace resources...${NC}"
-kubectl apply -n $NAMESPACE $NS_BLACK_LIST -f - << EOF
+kubectl apply -n $NAMESPACE -f - << EOF
 $(echo "# ServiceAccount
 apiVersion: v1
 kind: ServiceAccount
@@ -179,7 +180,7 @@ spec:
               memory: 256Mi
           env:
             - name: NS_BLACK_LIST
-              value: ${NS_BLACK_LIST}
+              value: "${NS_BLACK_LIST}"
           livenessProbe:
             httpGet:
               path: /health
@@ -207,7 +208,7 @@ spec:
       port: 80
       targetPort: 8080
   type: ${SERVICE_TYPE}
-" | IMAGE=$IMAGE envsubst)
+" | IMAGE=$IMAGE NS_BLACK_LIST="'$NS_BLACK_LIST'" envsubst)
 EOF
 
 # Apply ingress if domain is provided

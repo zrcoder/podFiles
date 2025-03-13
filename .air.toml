@@ -4,15 +4,14 @@ tmp_dir = "tmp"
 
 [build]
 args_bin = []
-bin = "./main"
-cmd = "make build"
+full_bin = "KUBECONFIG_FILE=~/.kube/config DEV=1 ./tmp/main"
+cmd = "go build -o tmp/main ./cmd/podFiles"
 delay = 1000
 exclude_dir = ["assets", "tmp", "testdata"]
 exclude_file = []
 exclude_regex = ["_test.go"]
 exclude_unchanged = false
 follow_symlink = false
-full_bin = ""
 include_dir = []
 include_ext = ["go", "sql", "json"]
 include_file = []

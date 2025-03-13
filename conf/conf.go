@@ -4,11 +4,9 @@ import (
 	_ "embed"
 	"encoding/json"
 	"log/slog"
-	"net/http"
 	"os"
 	"strings"
 
-	sdk "gitee.com/rdor/amis-sdk/v6"
 	"github.com/gin-gonic/gin"
 	"github.com/zrcoder/amisgo/conf"
 )
@@ -34,7 +32,6 @@ var (
 
 func Options() []conf.Option {
 	return []conf.Option{
-		conf.WithLocalSdk(http.FS(sdk.FS)),
 		conf.WithTheme(conf.ThemeAng),
 		conf.WithLocales(
 			conf.Locale{Value: conf.LocaleZhCN, Label: "汉", Dict: zhCN},
@@ -51,6 +48,7 @@ var (
 
 func init() {
 	list := strings.Split(os.Getenv(NsBlackListEnv), ",")
+	slog.Debug("nsBlackList", "list", list)
 	for _, ns := range list {
 		ns = strings.TrimSpace(ns)
 		if len(ns) == 0 {
