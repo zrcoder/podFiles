@@ -29,7 +29,7 @@ build:
 # Run the application locally
 run:
 	@echo "Running locally..."
-	@DEV=1 KUBECONFIG_FILE=~/.kube/config go run ./cmd/podFiles
+	@DEV=1 KUBECONFIG=~/.kube/config go run ./cmd/podFiles
 
 # Run with docker-compose, supporting both V1 and V2
 docker-run:

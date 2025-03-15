@@ -40,8 +40,8 @@ type Client struct {
 }
 
 func New() (*Client, error) {
-	kubeconfigFilePath := os.Getenv("KUBECONFIG_FILE")
-	// if KUBECONFIG_FILE is not set, will call inClusterConfig inside BuildConfigFromFlags
+	kubeconfigFilePath := os.Getenv("KUBECONFIG")
+	// if KUBECONFIG is not set, will call inClusterConfig inside BuildConfigFromFlags
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfigFilePath)
 	if err != nil {
 		return nil, err
