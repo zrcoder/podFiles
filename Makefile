@@ -1,5 +1,5 @@
 # Version information
-VERSION ?= 0.0.4
+VERSION ?= 0.0.7
 IMAGE_NAME ?= podfiles
 IMAGE_TAG ?= $(VERSION)
 

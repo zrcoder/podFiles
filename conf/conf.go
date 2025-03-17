@@ -4,9 +4,11 @@ import (
 	_ "embed"
 	"encoding/json"
 	"log/slog"
+	"net/http"
 	"os"
 	"strings"
 
+	sdk "gitee.com/rdor/amis-sdk/v6"
 	"github.com/gin-gonic/gin"
 	"github.com/zrcoder/amisgo/conf"
 )
@@ -33,6 +35,7 @@ var (
 func Options() []conf.Option {
 	return []conf.Option{
 		conf.WithTheme(conf.ThemeAng),
+		conf.WithLocalSdk(http.FS(sdk.FS)),
 		conf.WithLocales(
 			conf.Locale{Value: conf.LocaleZhCN, Label: "汉", Dict: zhCN},
 			conf.Locale{Value: conf.LocaleEnUS, Label: "En", Dict: enUS},

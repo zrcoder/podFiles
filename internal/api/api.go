@@ -35,6 +35,8 @@ const (
 	uploadPath     = "upload"
 	downloadPath   = "download"
 
+	HealthPath = "/health"
+
 	Login      = Prefix + loginPath
 	Register   = Prefix + registerPath
 	Logout     = Prefix + logoutPath
@@ -61,8 +63,8 @@ func New() http.Handler {
 	}
 
 	g := gin.Default()
-	g.Use(auth.Auth)
 	api := g.Group(Prefix)
+	api.Use(auth.Auth)
 	{
 		api.GET(namespacesPath, listNamespaces)
 		api.POST(namespacesPath, setNamespace)
@@ -309,4 +311,8 @@ func download(c *gin.Context) {
 
 		return false // Return false to end the stream
 	})
+}
+
+func Healthz(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
 }
