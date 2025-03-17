@@ -6,7 +6,13 @@ COPY . .
 
 ENV GOPROXY=https://goproxy.cn,direct
 
-RUN go build -ldflags "-s -w" -o podfiles ./cmd/podFiles
+ARG USE_LOCAL_SDK=false
+
+RUN if [ "$USE_LOCAL_SDK" = "true" ]; then \
+        go build -tags local_sdk -ldflags "-s -w" -o podfiles ./cmd/podFiles; \
+    else \
+        go build -ldflags "-s -w" -o podfiles ./cmd/podFiles; \
+    fi
 
 FROM alpine:3.21.3
 

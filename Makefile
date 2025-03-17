@@ -23,7 +23,7 @@ build-image:
 # Build and tag docker image with local sdk
 build-image-localsdk:
 	@echo "Building docker image $(IMAGE_NAME):$(IMAGE_TAG) with local sdk..."
-	@docker build -t $(IMAGE_NAME):localsdk-$(IMAGE_TAG) -f Dockerfile-localsdk .
+	@docker build --build-arg USE_LOCAL_SDK=true -t $(IMAGE_NAME):localsdk-$(IMAGE_TAG) .
 	@echo "Docker image $(IMAGE_NAME):localsdk-$(IMAGE_TAG) built successfully."
 
 # Build the application
