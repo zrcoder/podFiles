@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"os"
 	"strings"
 
 	"github.com/zrcoder/podFiles/conf"
@@ -40,9 +39,8 @@ type Client struct {
 }
 
 func New() (*Client, error) {
-	kubeconfigFilePath := os.Getenv("KUBECONFIG")
-	// if KUBECONFIG is not set, will call inClusterConfig inside BuildConfigFromFlags
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfigFilePath)
+	// if conf.KubeConfigPath() is empty, will call inClusterConfig inside BuildConfigFromFlags
+	config, err := clientcmd.BuildConfigFromFlags("", conf.KubeConfigPath())
 	if err != nil {
 		return nil, err
 	}

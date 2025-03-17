@@ -1,5 +1,5 @@
 # Version information
-VERSION ?= 0.0.7
+VERSION ?= 0.0.8
 IMAGE_NAME ?= podfiles
 IMAGE_TAG ?= $(VERSION)
 
@@ -20,11 +20,21 @@ build-image:
 	@docker build -t $(IMAGE_NAME):$(IMAGE_TAG) .
 	@docker tag $(IMAGE_NAME):$(IMAGE_TAG) $(IMAGE_NAME):latest
 	@echo "Docker image $(IMAGE_NAME):$(IMAGE_TAG) built successfully."
+# Build and tag docker image with local sdk
+build-image-localsdk:
+	@echo "Building docker image $(IMAGE_NAME):$(IMAGE_TAG) with local sdk..."
+	@docker build -t $(IMAGE_NAME):localsdk-$(IMAGE_TAG) -f Dockerfile-localsdk .
+	@echo "Docker image $(IMAGE_NAME):localsdk-$(IMAGE_TAG) built successfully."
 
 # Build the application
 build:
 	@echo "Building binary..."
-	@go build -o main ./cmd/podFiles
+	@go build -o ./tmp/main ./cmd/podFiles
+
+# Build the application with local sdk
+build-localsdk:
+	@echo "Building binary with local sdk..."
+	@go build -tags local_sdk -o ./tmp/main ./cmd/podFiles
 
 # Run the application locally
 run:

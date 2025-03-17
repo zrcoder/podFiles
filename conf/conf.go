@@ -4,16 +4,41 @@ import (
 	_ "embed"
 	"encoding/json"
 	"log/slog"
-	"net/http"
 	"os"
 	"strings"
 
-	sdk "gitee.com/rdor/amis-sdk/v6"
 	"github.com/gin-gonic/gin"
 	"github.com/zrcoder/amisgo/conf"
 )
 
-const NsBlackListEnv = "NS_BLACK_LIST"
+var (
+	//go:embed i18n/en-US.json
+	enUS json.RawMessage
+	//go:embed i18n/zh-CN.json
+	zhCN json.RawMessage
+)
+
+func commonOptions() []conf.Option {
+	return []conf.Option{
+		conf.WithTheme(conf.ThemeAng),
+		conf.WithLocales(
+			conf.Locale{Value: conf.LocaleZhCN, Label: "汉", Dict: zhCN},
+			conf.Locale{Value: conf.LocaleEnUS, Label: "En", Dict: enUS},
+		),
+	}
+}
+
+const (
+	nsBlackListEnv   = "NS_BLACK_LIST"
+	servicePrefixEnv = "SVC_PREFIX"
+	kubeConfigEnv    = "KUBECONFIG"
+)
+
+var (
+	nsPrefixBlackList = []string{"kube-"}
+	nsSuffixBlackList []string
+	nsBlackList       []string
+)
 
 func init() {
 	if os.Getenv("DEV") != "" {
@@ -23,34 +48,8 @@ func init() {
 		slog.SetLogLoggerLevel(slog.LevelInfo)
 		gin.SetMode(gin.ReleaseMode)
 	}
-}
 
-var (
-	//go:embed i18n/en-US.json
-	enUS json.RawMessage
-	//go:embed i18n/zh-CN.json
-	zhCN json.RawMessage
-)
-
-func Options() []conf.Option {
-	return []conf.Option{
-		conf.WithTheme(conf.ThemeAng),
-		conf.WithLocalSdk(http.FS(sdk.FS)),
-		conf.WithLocales(
-			conf.Locale{Value: conf.LocaleZhCN, Label: "汉", Dict: zhCN},
-			conf.Locale{Value: conf.LocaleEnUS, Label: "En", Dict: enUS},
-		),
-	}
-}
-
-var (
-	nsPrefixBlackList = []string{"kube-"}
-	nsSuffixBlackList []string
-	nsBlackList       []string
-)
-
-func init() {
-	list := strings.Split(os.Getenv(NsBlackListEnv), ",")
+	list := strings.Split(os.Getenv(nsBlackListEnv), ",")
 	slog.Debug("nsBlackList", "list", list)
 	for _, ns := range list {
 		ns = strings.TrimSpace(ns)
@@ -84,4 +83,8 @@ func NsInBlacklist(ns string) bool {
 		}
 	}
 	return false
+}
+
+func KubeConfigPath() string {
+	return os.Getenv(kubeConfigEnv)
 }
