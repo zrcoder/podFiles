@@ -304,6 +304,7 @@ func download(c *gin.Context) {
 		err := k8sClient.DownloadFile(c.Request.Context(), session, file, bufWriter)
 		if err != nil {
 			slog.Error("download file failed", log.Error(err))
+			return false
 		}
 
 		// Ensure all data is flushed
