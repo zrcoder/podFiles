@@ -1,6 +1,8 @@
 module github.com/zrcoder/podFiles
 
-go 1.24.0
+go 1.23.0
+
+toolchain go1.23.7
 
 require (
 	gitee.com/rdor/amis-sdk/v6 v6.11.0
